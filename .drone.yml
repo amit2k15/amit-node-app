@@ -44,6 +44,6 @@ steps:
       - docker pull your-docker-username/node-docker-app:latest
       - docker stop node-app || true
       - docker rm node-app || true
-      - docker run -d --name node-app -p 3000:3000 your-docker-username/node-docker-app:latest
+      - docker run -d --name node-app -p 7000:7000 your-docker-username/node-docker-app:latest
     when:
       branch: main

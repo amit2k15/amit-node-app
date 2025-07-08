@@ -1,0 +1,49 @@
+kind: pipeline
+type: docker
+name: node-docker-app
+
+steps:
+  # Build Node.js application
+  - name: build
+    image: node:18-alpine
+    commands:
+      - cd src
+      - npm install
+      - npm test  # if you have tests
+
+  # Build Docker image
+  - name: docker-build
+    image: plugins/docker
+    settings:
+      repo: your-docker-username/node-docker-app
+      tags: latest,${DRONE_BUILD_NUMBER}
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+    when:
+      branch: main
+
+  # Push to Docker Hub
+  - name: docker-push
+    image: plugins/docker
+    settings:
+      repo: your-docker-username/node-docker-app
+      tags: latest,${DRONE_BUILD_NUMBER}
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+    when:
+      branch: main
+
+  # Deploy to Docker
+  - name: deploy
+    image: docker:20.10
+    commands:
+      - docker pull your-docker-username/node-docker-app:latest
+      - docker stop node-app || true
+      - docker rm node-app || true
+      - docker run -d --name node-app -p 3000:3000 your-docker-username/node-docker-app:latest
+    when:
+      branch: main

@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'your-dockerhub-username/nodejs-app'
+        DOCKER_IMAGE = 'amit2k16/nodejs-app'
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         CONTAINER_NAME = 'nodejs-app'
         PORT = '3000'
@@ -12,7 +12,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main', 
-                url: 'https://github.com/your-username/nodejs-docker-jenkins-demo.git'
+                url: 'https://github.com/amit2k15/amit-node-app.git'
                 sh 'ls -la' // Verify files
             }
         }
@@ -41,7 +41,7 @@ pipeline {
             steps {
                 script {
                     withCredentials([usernamePassword(
-                        credentialsId: 'dockerhubid',
+                        credentialsId: 'dockerhub',
                         usernameVariable: 'DOCKER_HUB_USER',
                         passwordVariable: 'DOCKER_HUB_TOKEN'
                     )]) {

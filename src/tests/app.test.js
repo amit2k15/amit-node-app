@@ -1,5 +1,5 @@
 const request = require('supertest');
-const app = require('../app');
+const app = require('../app'); // Correct relative path
 
 describe('GET /', () => {
   it('responds with json', async () => {

@@ -2,30 +2,50 @@ pipeline {
     agent any
 
     environment {
+        // Docker configuration
         DOCKER_IMAGE = 'amit2k16/nodejs-app'
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         CONTAINER_NAME = 'nodejs-app'
         PORT = '3000'
+        
+        // Node.js configuration
+        NODE_ENV = 'test'
     }
 
     stages {
-        stage('Checkout') {
+        stage('Clean Workspace') {
             steps {
-                git branch: 'main', 
-                url: 'https://github.com/amit2k15/amit-node-app.git'
+                cleanWs()
+            }
+        }
+
+        stage('Checkout Code') {
+            steps {
+                git(
+                    url: 'https://github.com/amit2k15/amit-node-app.git',
+                    branch: 'main',
+                    poll: true
+                )
                 sh 'ls -la' // Verify files
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm install'
+                sh 'npm ci --no-audit' // Clean install without audit
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'npm test'
+                script {
+                    try {
+                        sh 'npm test'
+                        junit '**/test-results.xml' // Publish test results
+                    } catch(e) {
+                        error('Tests failed!')
+                    }
+                }
             }
         }
 
@@ -56,11 +76,11 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    // Stop and remove old container
+                    // Stop and remove old container if exists
                     sh "docker stop ${CONTAINER_NAME} || true"
                     sh "docker rm ${CONTAINER_NAME} || true"
                     
-                    // Pull and run new image
+                    // Run new container
                     sh """
                     docker run -d \
                         --name ${CONTAINER_NAME} \
@@ -75,13 +95,17 @@ pipeline {
 
     post {
         always {
-            echo 'Pipeline completed'
+            echo 'Pipeline completed - cleaning up'
+            sh 'docker logout || true'
+            cleanWs()
         }
         success {
-            echo 'Deployment successful!'
+            echo 'Pipeline succeeded!'
+            slackSend(color: 'good', message: "Deployment successful: ${env.BUILD_URL}")
         }
         failure {
-            echo 'Pipeline failed'
+            echo 'Pipeline failed!'
+            slackSend(color: 'danger', message: "Deployment failed: ${env.BUILD_URL}")
         }
     }
 }

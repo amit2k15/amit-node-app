@@ -9,8 +9,9 @@ app.get('/', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+// Export the app for testing
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-module.exports = app; // For testing
+module.exports = app; // This is crucial for testing

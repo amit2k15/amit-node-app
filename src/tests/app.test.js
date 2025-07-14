@@ -1,7 +1,17 @@
 const request = require('supertest');
-const app = require('../app'); // Correct relative path
+const app = require('../app');
 
 describe('GET /', () => {
+  let server;
+
+  beforeAll(() => {
+    server = app.listen(3001); // Use different port for tests
+  });
+
+  afterAll((done) => {
+    server.close(done);
+  });
+
   it('responds with json', async () => {
     const response = await request(app)
       .get('/')

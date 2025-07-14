@@ -33,11 +33,22 @@ pipeline {
             }
         }
 
+        
         stage('Run Tests') {
-            steps {
-                sh 'npm test'
-            }
-        }
+  environment {
+    NODE_ENV = 'test'
+  }
+  steps {
+    script {
+      try {
+        sh 'npm test'
+        junit 'test-results.xml' // If you configure Jest to output JUnit format
+      } catch(e) {
+        error('Tests failed!')
+      }
+    }
+  }
+}
 
         stage('Build Docker Image') {
             steps {

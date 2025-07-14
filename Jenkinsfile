@@ -3,13 +3,18 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = 'amit2k15/amit-node-app'
-        DOCKER_CREDENTIALS_ID = 'dockerhub'
+        DOCKER_CREDENTIALS_ID = 'dockerhub' // Make sure this exists in Jenkins credentials
+    }
+
+    tools {
+        nodejs "Node 18"  // Optional: configured in Jenkins Global Tools
     }
 
     stages {
-        stage('Clone Repo') {
+        stage('Checkout Code') {
             steps {
-                git branch: 'main', 'https://github.com/amit2k15/amit-node-app.git'
+                // Explicitly name all arguments
+                git branch: 'main', url: 'https://github.com/amit2k15/amit-node-app.git'
             }
         }
 
@@ -19,9 +24,9 @@ pipeline {
             }
         }
 
-        stage('Test') {
+        stage('Run Tests') {
             steps {
-                sh 'npm test || echo "No tests defined, skipping..."'
+                sh 'npm test || echo "No tests defined"'
             }
         }
 
@@ -36,7 +41,6 @@ pipeline {
         stage('Push to DockerHub') {
             steps {
                 script {
-                    // Use '' for default DockerHub registry
                     docker.withRegistry('', "${DOCKER_CREDENTIALS_ID}") {
                         docker.image("${DOCKER_IMAGE}:latest").push()
                     }
@@ -44,7 +48,7 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy Container') {
             steps {
                 sh '''
                 docker rm -f amit-node-app || true
@@ -56,10 +60,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Deployment completed successfully!'
+            echo '✅ Application deployed successfully!'
         }
         failure {
-            echo '❌ Deployment failed!'
+            echo '❌ Build or deployment failed!'
         }
     }
 }

@@ -1,9 +1,8 @@
 # Build stage
-FROM node:18-alpine as builder
+FROM node:18-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-ARG NPM_CONFIG_LEGACY_PEER_DEPS=true
-RUN npm ci --no-audit
+RUN npm ci --no-audit --legacy-peer-deps
 COPY . .
 RUN npm run build
 

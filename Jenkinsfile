@@ -37,7 +37,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", "--build-arg NPM_CONFIG_LEGACY_PEER_DEPS=true .")
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", "--no-cache --build-arg NPM_CONFIG_LEGACY_PEER_DEPS=true .")
                 }
             }
         }

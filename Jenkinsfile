@@ -48,7 +48,7 @@ pipeline {
             steps {
                 sh '''
                 docker rm -f amit-node-app || true
-                docker run -d --name amit-node-app -p 3000:3000 ${DOCKER_IMAGE}:latest
+                docker run -d --name amit-node-app -p 7000:7000 ${DOCKER_IMAGE}:latest
                 '''
             }
         }

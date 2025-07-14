@@ -2,23 +2,14 @@ pipeline {
     agent any
 
     environment {
-        // Docker configuration
         DOCKER_IMAGE = 'amit2k16/nodejs-app'
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         CONTAINER_NAME = 'nodejs-app'
         PORT = '3000'
-        
-        // Node.js configuration
         NODE_ENV = 'test'
     }
 
     stages {
-        stage('Clean Workspace') {
-            steps {
-                cleanWs()
-            }
-        }
-
         stage('Checkout Code') {
             steps {
                 git(
@@ -26,27 +17,37 @@ pipeline {
                     branch: 'main',
                     poll: true
                 )
-                sh 'ls -la' // Verify files
+                sh 'ls -la'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm install'
+                script {
+                    // Try normal install first
+                    try {
+                        if (fileExists('package-lock.json')) {
+                            sh 'npm ci --no-audit'
+                        } else {
+                            sh 'npm install --no-audit'
+                        }
+                    } catch (e) {
+                        // Fallback to legacy peer deps if normal install fails
+                        echo 'Standard install failed, trying with legacy peer deps'
+                        if (fileExists('package-lock.json')) {
+                            sh 'npm ci --no-audit --legacy-peer-deps'
+                        } else {
+                            sh 'npm install --no-audit --legacy-peer-deps'
+                        }
+                    }
+                }
             }
         }
 
-
+        // Rest of your pipeline...
         stage('Run Tests') {
             steps {
-                script {
-                    try {
-                        sh 'npm test'
-                        junit '**/test-results.xml' // Publish test results
-                    } catch(e) {
-                        error('Tests failed!')
-                    }
-                }
+                sh 'npm test'
             }
         }
 
@@ -56,57 +57,6 @@ pipeline {
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
                 }
             }
-        }
-
-        stage('Push to Docker Hub') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'dockerhub',
-                        usernameVariable: 'DOCKER_HUB_USER',
-                        passwordVariable: 'DOCKER_HUB_TOKEN'
-                    )]) {
-                        sh "echo ${DOCKER_HUB_TOKEN} | docker login -u ${DOCKER_HUB_USER} --password-stdin"
-                        sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
-                        sh 'docker logout'
-                    }
-                }
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                script {
-                    // Stop and remove old container if exists
-                    sh "docker stop ${CONTAINER_NAME} || true"
-                    sh "docker rm ${CONTAINER_NAME} || true"
-                    
-                    // Run new container
-                    sh """
-                    docker run -d \
-                        --name ${CONTAINER_NAME} \
-                        -p ${PORT}:${PORT} \
-                        -e NODE_ENV=production \
-                        ${DOCKER_IMAGE}:${DOCKER_TAG}
-                    """
-                }
-            }
-        }
-    }
-
-    post {
-        always {
-            echo 'Pipeline completed - cleaning up'
-            sh 'docker logout || true'
-            cleanWs()
-        }
-        success {
-            echo 'Pipeline succeeded!'
-            slackSend(color: 'good', message: "Deployment successful: ${env.BUILD_URL}")
-        }
-        failure {
-            echo 'Pipeline failed!'
-            slackSend(color: 'danger', message: "Deployment failed: ${env.BUILD_URL}")
         }
     }
 }

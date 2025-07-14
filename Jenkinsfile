@@ -12,7 +12,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/your-username/your-nodejs-repo.git',
+                git url: 'https://github.com/amit2k15/amit-node-app.git',
                     branch: 'main'
             }
         }

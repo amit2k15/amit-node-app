@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage('Clone Repo') {
             steps {
-                git 'https://github.com/amit2k15/amit-node-app.git'
+                git branch: 'main', 'https://github.com/amit2k15/amit-node-app.git'
             }
         }
 

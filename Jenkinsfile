@@ -3,21 +3,14 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = 'amit2k15/amit-node-app'
-        DOCKER_CREDENTIALS_ID = 'dockerhub' // Make sure this exists in Jenkins credentials
+        DOCKER_CREDENTIALS_ID = 'dockerhub'
     }
 
     tools {
-        nodejs "Node 18"  // Optional: configured in Jenkins Global Tools
+        nodejs "Node 18"
     }
 
     stages {
-        stage('Checkout Code') {
-            steps {
-                // Explicitly name all arguments
-                git branch: 'main', url: 'https://github.com/amit2k15/amit-node-app.git'
-            }
-        }
-
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'

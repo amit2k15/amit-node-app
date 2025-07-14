@@ -32,9 +32,18 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm ci --no-audit' // Clean install without audit
+                script {
+                    // Flexible install based on lockfile presence
+                    if (fileExists('package-lock.json')) {
+                        sh 'npm ci --no-audit'
+                    } else {
+                        sh 'npm install --no-audit'
+                        sh 'npm install --package-lock-only' // Generate lockfile
+                    }
+                }
             }
         }
+
 
         stage('Run Tests') {
             steps {

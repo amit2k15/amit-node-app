@@ -6,10 +6,15 @@ pipeline {
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         CONTAINER_NAME = 'nodejs-app'
         PORT = '3000'
-        NODE_ENV = 'test'
     }
 
     stages {
+        stage('Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
         stage('Checkout Code') {
             steps {
                 git(
@@ -23,28 +28,11 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                script {
-                    // Try normal install first
-                    try {
-                        if (fileExists('package-lock.json')) {
-                            sh 'npm ci --no-audit'
-                        } else {
-                            sh 'npm install --no-audit'
-                        }
-                    } catch (e) {
-                        // Fallback to legacy peer deps if normal install fails
-                        echo 'Standard install failed, trying with legacy peer deps'
-                        if (fileExists('package-lock.json')) {
-                            sh 'npm ci --no-audit --legacy-peer-deps'
-                        } else {
-                            sh 'npm install --no-audit --legacy-peer-deps'
-                        }
-                    }
-                }
+                sh 'npm install --legacy-peer-deps --no-audit'
+                sh 'npm install --package-lock-only'
             }
         }
 
-        // Rest of your pipeline...
         stage('Run Tests') {
             steps {
                 sh 'npm test'
@@ -57,6 +45,45 @@ pipeline {
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", "--build-arg NPM_CONFIG_LEGACY_PEER_DEPS=true .")
                 }
             }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhubid',
+                        usernameVariable: 'DOCKER_HUB_USER',
+                        passwordVariable: 'DOCKER_HUB_TOKEN'
+                    )]) {
+                        sh "echo ${DOCKER_HUB_TOKEN} | docker login -u ${DOCKER_HUB_USER} --password-stdin"
+                        sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                        sh 'docker logout'
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                    sh "docker stop ${CONTAINER_NAME} || true"
+                    sh "docker rm ${CONTAINER_NAME} || true"
+                    sh """
+                    docker run -d \
+                        --name ${CONTAINER_NAME} \
+                        -p ${PORT}:${PORT} \
+                        -e NODE_ENV=production \
+                        ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline completed'
+            sh 'docker logout || true'
         }
     }
 }

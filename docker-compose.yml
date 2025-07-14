@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  app:
+    image: your-dockerhub-username/nodejs-app:latest
+    container_name: nodejs-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

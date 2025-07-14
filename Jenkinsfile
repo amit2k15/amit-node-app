@@ -2,19 +2,18 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'amit2k15/amit-node-app'
-        DOCKER_CREDENTIALS_ID = 'dockerhub'
-    }
-
-    tools {
-        nodejs "Node 18"
+        DOCKER_IMAGE = 'your-dockerhub-username/nodejs-app'
+        DOCKER_TAG = "${env.BUILD_NUMBER}"
+        CONTAINER_NAME = 'nodejs-app'
+        PORT = '3000'
     }
 
     stages {
-
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/amit2k15/amit-node-app.git'
+                git branch: 'main', 
+                url: 'https://github.com/your-username/nodejs-docker-jenkins-demo.git'
+                sh 'ls -la' // Verify files
             }
         }
 
@@ -26,44 +25,63 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                sh 'npm test || echo "No tests defined"'
+                sh 'npm test'
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${DOCKER_IMAGE}:latest")
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
                 }
             }
         }
 
-        stage('Push to DockerHub') {
+        stage('Push to Docker Hub') {
             steps {
                 script {
-                    docker.withRegistry('', "${DOCKER_CREDENTIALS_ID}") {
-                        docker.image("${DOCKER_IMAGE}:latest").push()
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhubid',
+                        usernameVariable: 'DOCKER_HUB_USER',
+                        passwordVariable: 'DOCKER_HUB_TOKEN'
+                    )]) {
+                        sh "echo ${DOCKER_HUB_TOKEN} | docker login -u ${DOCKER_HUB_USER} --password-stdin"
+                        sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                        sh 'docker logout'
                     }
                 }
             }
         }
 
-        stage('Deploy Container') {
+        stage('Deploy') {
             steps {
-                sh '''
-                docker rm -f amit-node-app || true
-                docker run -d --name amit-node-app -p 3000:3000 ${DOCKER_IMAGE}:latest
-                '''
+                script {
+                    // Stop and remove old container
+                    sh "docker stop ${CONTAINER_NAME} || true"
+                    sh "docker rm ${CONTAINER_NAME} || true"
+                    
+                    // Pull and run new image
+                    sh """
+                    docker run -d \
+                        --name ${CONTAINER_NAME} \
+                        -p ${PORT}:${PORT} \
+                        -e NODE_ENV=production \
+                        ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    """
+                }
             }
         }
     }
 
     post {
+        always {
+            echo 'Pipeline completed'
+        }
         success {
-            echo '✅ Application deployed successfully!'
+            echo 'Deployment successful!'
         }
         failure {
-            echo '❌ Build or deployment failed!'
+            echo 'Pipeline failed'
         }
     }
 }
